@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-5 md:p-10">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Web License Manager</h2>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="p-3 border">Domain (Key)</th>
+                        <th class="p-3 border">Status</th>
+                        <th class="p-3 border">Reg. Date</th>
+                        <th class="p-3 border">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="license-table">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- APNAR CONFIGURATION ---
+        const DB_URL = "https://weblicense-1b3aa-default-rtdb.firebaseio.com/licenses.json";
+
+        async function loadLicenses() {
+            const table = document.getElementById('license-table');
+            table.innerHTML = '<tr><td colspan="4" class="p-5 text-center">Loading...</td></tr>';
+
+            try {
+                const response = await fetch(DB_URL);
+                const data = await response.json();
+                table.innerHTML = '';
+
+                if (!data) {
+                    table.innerHTML = '<tr><td colspan="4" class="p-5 text-center text-red-500">No Domains Registered Yet.</td></tr>';
+                    return;
+                }
+
+                for (let key in data) {
+                    const statusColor = data[key].status === 'active' ? 'text-green-600' : 'text-red-600';
+                    const btnText = data[key].status === 'active' ? 'Block' : 'Unblock';
+                    const btnClass = data[key].status === 'active' ? 'bg-red-500' : 'bg-green-500';
+                    const newStatus = data[key].status === 'active' ? 'blocked' : 'active';
+
+                    table.innerHTML += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 border font-mono text-sm">${key}</td>
+                            <td class="p-3 border font-bold ${statusColor}">${data[key].status.toUpperCase()}</td>
+                            <td class="p-3 border text-sm text-gray-500">${data[key].registered_at || 'N/A'}</td>
+                            <td class="p-3 border">
+                                <button onclick="updateStatus('${key}', '${newStatus}')" class="px-3 py-1 text-white rounded shadow ${btnClass} text-xs font-bold hover:opacity-80 transition">
+                                    ${btnText}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error("Error loading data:", error);
+            }
+        }
+
+        async function updateStatus(key, newStatus) {
+            const updateUrl = `https://weblicense-1b3aa-default-rtdb.firebaseio.com/licenses/${key}/status.json`;
+            
+            if (confirm(`Are you sure you want to ${newStatus} this domain?`)) {
+                try {
+                    await fetch(updateUrl, {
+                        method: 'PUT',
+                        body: JSON.stringify(newStatus)
+                    });
+                    loadLicenses(); // Refresh table
+                } catch (error) {
+                    alert("Failed to update status.");
+                }
+            }
+        }
+
+        // Initial Load
+        loadLicenses();
+    </script>
+</body>
+</html>
